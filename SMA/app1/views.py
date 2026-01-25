@@ -70,7 +70,7 @@ def register_user(request):
             return redirect('register')
 
         except:
-            return render('error')
+            return render(request, 'error.html')
 
     return render(request, 'register.html')
 
@@ -454,25 +454,40 @@ def historic_data(request):
     if request.method == "POST":
 
         try:
-            stockcompanies = request.POST["stockcompanies"]
-            startdate = request.POST["startdate"]
+            stockcompanies = request.POST.get("stockcompanies")
+            startdate = request.POST.get("startdate")
+            enddate = request.POST.get("enddate")
+            
+            if not stockcompanies or not startdate or not enddate:
+                messages.error(request, 'Please select stock, start date, and end date')
+                return redirect('historic_fm')
+            
             startdate = datetime.strptime(startdate, '%Y-%m-%d')
-            enddate = request.POST["enddate"]
             enddate = datetime.strptime(enddate, '%Y-%m-%d')
+            
             data_reader = DataReader()
             global H_data
-            H_data = data_reader.stocks(stockcompanies, start = startdate, end=enddate)
-            data=H_data
-            data["Date"] = pd.DatetimeIndex(data["Date"]).strftime("%Y-%m-%d")
+            H_data = data_reader.stocks(stockcompanies, start=startdate, end=enddate)
+            
+            if H_data is None or len(H_data) == 0:
+                messages.error(request, 'No data found for this symbol and date range')
+                return redirect('historic_fm')
+            
+            # Format date column for display
+            data = H_data.copy()
+            if "Date" in data.columns:
+                data["Date"] = pd.to_datetime(data["Date"]).dt.strftime("%Y-%m-%d")
             
             fig, config = data_reader.Table_Dsg(data)
-
             h_table_dsg = plot(fig, config=config, output_type='div')
             
-            return render(request, "historic_data.html",{'h_table_dsg': h_table_dsg })
+            return render(request, "historic_data.html", {'h_table_dsg': h_table_dsg})
             
-        except:
-            messages.error(request, 'Please Download Historic data first!')
+        except Exception as e:
+            print(f"Historic data error: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            messages.error(request, f'Error fetching data: {str(e)}')
             return redirect('historic_fm')
 
     else:
@@ -482,13 +497,19 @@ def historic_data(request):
 def candelistic(request):
     if request.user.is_authenticated:
         try:
-            data=H_data  
+            global H_data
+            if H_data is None or len(H_data) == 0:
+                messages.error(request, 'Please Download Historic data first!')
+                return redirect('historic_fm')
+            
+            data = H_data  
             obj = Candlestic(data) 
             fig, config = obj.can_gph
             can_dsg = plot(fig, config=config, output_type='div')
-            return render(request, 'candelistic.html', {'can_dsg':can_dsg})
-        except:
-            messages.error(request, 'Please Download Historic data first!')
+            return render(request, 'candelistic.html', {'can_dsg': can_dsg})
+        except Exception as e:
+            print(f"Candlestick error: {str(e)}")
+            messages.error(request, f'Error: {str(e)}')
             return redirect('historic_fm')
     else:
         return redirect('login_signup')
@@ -497,21 +518,27 @@ def candelistic(request):
 def prediction(request):
     if request.user.is_authenticated:
         try:
+            global H_data
+            if H_data is None or len(H_data) == 0:
+                messages.error(request, 'Please Download Historic data first!')
+                return redirect('historic_fm')
+            
             data = H_data
             if len(data) > 50:
                 data = data.drop('Volume', axis=1)
                 global P_data 
-                obj= Prediction(data)
-                P_data=obj.pre_data
+                obj = Prediction(data)
+                P_data = obj.pre_data
 
-                fig, config=obj.Pred_Dsg(P_data)
+                fig, config = obj.Pred_Dsg(P_data)
                 pre_dsg = plot(fig, config=config, output_type='div')
-                return render(request, 'predictions.html', {'pre_dsg':pre_dsg})
+                return render(request, 'predictions.html', {'pre_dsg': pre_dsg})
             else:
                 messages.error(request, 'Data is not enough to make Predictions. Please download again!')
                 return redirect('historic_fm')
-        except:
-            messages.error(request, 'Please Download Historic data first!')
+        except Exception as e:
+            print(f"Prediction error: {str(e)}")
+            messages.error(request, f'Error: {str(e)}')
             return redirect('historic_fm')    
     else:
         return redirect('login_signup')

@@ -101,22 +101,62 @@ class DataReader:
         # concatenate each frame to a single dataframe
         data = pd.concat(data)
 
+        # Rename columns to title case
+        data.columns = data.columns.str.strip()  # Remove leading/trailing spaces
         data = data.rename(columns=str.title)
 
-        data.rename(columns={"Time": "Date", }, inplace=True)
+        # Rename Time column to Date
+        if "Time" in data.columns:
+            data.rename(columns={"Time": "Date"}, inplace=True)
+        elif " " in data.columns:  # Handle space column (date column)
+            data.rename(columns={" ": "Date"}, inplace=True)
 
-        data["Date"] = pd.to_datetime(data["Date"])
+        # Ensure Date column exists
+        if "Date" not in data.columns:
+            print("Available columns:", data.columns.tolist())
+            raise KeyError("Date column not found. Available columns: " + str(data.columns.tolist()))
+
+        # Convert Date column - handle different formats
+        # API returns dates like "Feb 26, 2021" which is "%b %d, %Y"
+        try:
+            # Try parsing with abbreviated month format first (Feb, Jan, etc)
+            data["Date"] = pd.to_datetime(data["Date"], format="%b %d, %Y", errors='coerce')
+        except Exception as e:
+            print(f"First format attempt failed: {e}")
+            try:
+                # Try full month name format (February, January, etc)
+                data["Date"] = pd.to_datetime(data["Date"], format="%B %d, %Y", errors='coerce')
+            except Exception as e2:
+                print(f"Second format attempt failed: {e2}")
+                # Try automatic format detection
+                data["Date"] = pd.to_datetime(data["Date"], errors='coerce')
+        
+        # Check for any NaT (Not a Time) values from failed parsing
+        if data["Date"].isna().any():
+            print(f"Warning: Some dates could not be parsed. Sample values: {data['Date'].head()}")
+        
+        # Sort by date
         data = data.sort_values(by="Date")
 
-        # Convert the date to datetime64 format bec start end
-        data["Date"] = pd.to_datetime(data["Date"], format="%Y-%m-%d")
-
         # Filter data between two dates
-        data = data.loc[(data["Date"] >= str(start))
-                        & (data["Date"] < str(end))]
+        start_dt = pd.to_datetime(start)
+        end_dt = pd.to_datetime(end)
+        data = data.loc[(data["Date"] >= start_dt) & (data["Date"] < end_dt)]
 
-        # remove non-numeric characters from volume column
-        data.Volume = data.Volume.str.replace(",", "")
+        # Remove non-numeric characters from volume column
+        if "Volume" in data.columns:
+            data["Volume"] = data["Volume"].astype(str).str.replace(",", "")
+
+        # Assigning Type to Columns
+        try:
+            data = data.astype({'Open': "float", "High": "float",
+                               "Low": "float", "Close": "float", "Volume": "int"})
+        except Exception as e:
+            print(f"Type conversion error: {e}")
+            print(f"Columns: {data.columns.tolist()}")
+            print(f"Data types:\n{data.dtypes}")
+
+        return data
 
         # Assigning Type to Columns
         data = data.astype({'Open': "float", "High": "float",
@@ -126,6 +166,15 @@ class DataReader:
 
     # table Design
     def Table_Dsg(self, df):
+
+        # Verify required columns exist
+        required_cols = ['Date', 'Open', 'High', 'Low', 'Close', 'Volume']
+        missing_cols = [col for col in required_cols if col not in df.columns]
+        
+        if missing_cols:
+            print(f"Missing columns: {missing_cols}")
+            print(f"Available columns: {df.columns.tolist()}")
+            raise KeyError(f"Missing required columns: {missing_cols}")
 
         table = {
             "type": "table",
@@ -137,7 +186,7 @@ class DataReader:
                 "height": 27,
                 "align": ["center"],
                 "format": [None, ", .2f", ", .2f", ",.2f", ",.2f", None],
-                "values": [df.Date, df.Open, df.High, df.Low, df.Close, df.Volume],
+                "values": [df['Date'], df['Open'], df['High'], df['Low'], df['Close'], df['Volume']],
             },
 
             "header": {
