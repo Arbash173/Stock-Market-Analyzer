@@ -3,62 +3,83 @@
 
 import { useEffect, useState } from "react";
 import { fetchAPI } from "@/lib/api";
-import { MarketSummaryItem, TopCompany } from "@/types";
 import { MarketTable } from "@/components/dashboard/MarketTable";
 import { TopCompanies } from "@/components/dashboard/TopCompanies";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AlertCircle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { NewsWidget } from "@/components/NewsWidget";
 
 export default function Dashboard() {
-  const [marketData, setMarketData] = useState<MarketSummaryItem[]>([]);
-  const [topCompanies, setTopCompanies] = useState<TopCompany[]>([]);
+  const [marketData, setMarketData] = useState<any[]>([]);
+  const [topCompanies, setTopCompanies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function fetchData() {
+    async function loadData() {
       try {
-        const [summaryRes, topRes] = await Promise.all([
+        const [marketRes, topRes] = await Promise.all([
           fetchAPI("/market-summary"),
           fetchAPI("/top-companies"),
         ]);
 
-        if (summaryRes.status === "success" && Array.isArray(summaryRes.data)) {
-          setMarketData(summaryRes.data);
+        if (marketRes.status === "success" && Array.isArray(marketRes.data)) {
+          setMarketData(marketRes.data);
         }
         if (topRes.status === "success" && Array.isArray(topRes.data)) {
           setTopCompanies(topRes.data);
         }
       } catch (err: any) {
-        setError(err.message || "Failed to fetch data");
+        setError(err.message || "Failed to load dashboard data");
       } finally {
         setLoading(false);
       }
     }
 
-    fetchData();
+    loadData();
   }, []);
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {[...Array(4)].map((_, i) => (
-            <Skeleton key={i} className="h-[120px] w-full rounded-xl" />
-          ))}
+      <div className="grid gap-6 md:grid-cols-3">
+        <div className="md:col-span-2 space-y-6">
+          <div className="grid gap-4 md:grid-cols-4">
+            {[...Array(4)].map((_, i) => (
+              <Skeleton key={i} className="h-32 w-full" />
+            ))}
+          </div>
+          <Skeleton className="h-[500px] w-full" />
         </div>
-        <Skeleton className="h-[500px] w-full rounded-xl" />
+        <div>
+          <Skeleton className="h-[600px] w-full" />
+        </div>
       </div>
     );
   }
 
   if (error) {
-    return <div className="text-red-500">Error: {error}</div>;
+    return (
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>Error</AlertTitle>
+        <AlertDescription>{error}</AlertDescription>
+      </Alert>
+    );
   }
 
   return (
-    <div className="flex flex-col gap-8">
-      <TopCompanies data={topCompanies} />
-      <MarketTable data={marketData} />
+    <div className="grid gap-6 md:grid-cols-3 lg:grid-cols-4 h-[calc(100vh-100px)]">
+      {/* Main Content Area - Takes up 3 cols on lg screens */}
+      <div className="space-y-6 md:col-span-2 lg:col-span-3 overflow-auto pr-2">
+        <TopCompanies data={topCompanies} />
+        <MarketTable data={marketData} />
+      </div>
+
+      {/* Right Sidebar / News Area - Takes up 1 col */}
+      <div className="h-full hidden md:block">
+        <NewsWidget />
+      </div>
     </div>
   );
 }

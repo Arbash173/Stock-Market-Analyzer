@@ -13,12 +13,14 @@ import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { MarketSummaryItem } from "@/types";
 import { Search } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 interface MarketTableProps {
     data: MarketSummaryItem[];
 }
 
 export function MarketTable({ data }: MarketTableProps) {
+    const router = useRouter();
     const [search, setSearch] = useState("");
 
     const filteredData = data.filter((item) =>
@@ -39,9 +41,9 @@ export function MarketTable({ data }: MarketTableProps) {
                     />
                 </div>
             </div>
-            <div className="rounded-md border">
+            <div className="rounded-md border h-[600px] overflow-auto relative">
                 <Table>
-                    <TableHeader>
+                    <TableHeader className="sticky top-0 bg-background z-10 shadow-sm">
                         <TableRow>
                             <TableHead>Symbol</TableHead>
                             <TableHead className="text-right">Price</TableHead>
@@ -54,17 +56,21 @@ export function MarketTable({ data }: MarketTableProps) {
                     <TableBody>
                         {filteredData.length > 0 ? (
                             filteredData.map((item) => (
-                                <TableRow key={item.SCRIP}>
+                                <TableRow
+                                    key={item.SCRIP}
+                                    className="cursor-pointer hover:bg-muted/50"
+                                    onClick={() => router.push(`/stock/${item.SCRIP}`)}
+                                >
                                     <TableCell className="font-medium">{item.SCRIP}</TableCell>
                                     <TableCell className="text-right">
                                         {Number(item.CURRENT).toFixed(2)}
                                     </TableCell>
                                     <TableCell
                                         className={`text-right ${Number(item.CHANGE) > 0
-                                                ? "text-green-600"
-                                                : Number(item.CHANGE) < 0
-                                                    ? "text-red-600"
-                                                    : ""
+                                            ? "text-green-600"
+                                            : Number(item.CHANGE) < 0
+                                                ? "text-red-600"
+                                                : ""
                                             }`}
                                     >
                                         {item.CHANGE ? Number(item.CHANGE).toFixed(2) : '-'}
