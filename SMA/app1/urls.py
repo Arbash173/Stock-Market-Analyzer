@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from . import api_views
 
 urlpatterns = [
     path('', views.login_signup, name='login_signup'),
@@ -55,4 +56,14 @@ urlpatterns = [
     path('update_password', views.update_password, name='update_password'),
 
     path('update', views.update, name='update'),
+
+    # API Endpoints
+    path('api/market-summary', api_views.api_market_summary, name='api_market_summary'),
+    path('api/top-companies', api_views.api_top_companies, name='api_top_companies'),
+    path('api/historic-data', api_views.api_historic_data, name='api_historic_data'),
+    path('api/stock-search', api_views.api_stock_search, name='api_stock_search'),
+    path('api/prediction', api_views.api_prediction, name='api_prediction'),
+    path('api/login', api_views.api_login, name='api_login'),
+    path('api/logout', api_views.api_logout, name='api_logout'),
+    path('api/register', api_views.api_register, name='api_register'),
 ]

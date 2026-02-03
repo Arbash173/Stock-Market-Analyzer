@@ -73,7 +73,10 @@ class Prediction:
                 X_test = X_test.reshape(X_test.shape[0], X_test.shape[1], 1)
 
                 # model = load_model('staticfiles/Ml_Models/' + i + ".h5")
-                model = load_model('F:/5. UNI/1. Fahads Uni/FYP/2. FYP (Part-2)/Stock Market Analyzer (Final)/SMA/static/Ml Models/' + i + ".h5")
+                import os
+                from django.conf import settings
+                model_path = os.path.join(settings.BASE_DIR, 'static/Ml_Models', i + ".h5")
+                model = load_model(model_path)
                 # model.summary()
 
                 lnt = len(test_data)
